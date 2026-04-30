@@ -140,6 +140,8 @@ Agent → Orchestrator，报告任务执行完成：
 
 Agent → Orchestrator，报告执行失败：
 
+> **D4扩展**：D4 §9.1在本节基础上扩展了error消息格式，新增`error_id`、`cluster_id`、`error_record_ref`、`input_artifact_versions`字段，用于错误聚合、关联和版本一致性校验。实现时应以D4 §9.1定义的扩展格式为准。
+
 ```json
 {
   "message_id": "uuid",
@@ -276,7 +278,7 @@ Agent → Orchestrator，长时间运行的Agent定期报告进度：
 **目录规范**：
 ```
 output/{pipeline_id}/
-├── artifacts/                  # 最终交付物
+├── artifacts/                  # 当前生效产物（L2工作区）
 │   ├── docs/                   # 文档
 │   │   ├── prd.docx
 │   │   ├── design.docx
@@ -287,30 +289,40 @@ output/{pipeline_id}/
 │   │   └── db_model.json
 │   ├── api/                    # 接口产物
 │   │   └── api_def.json
+│   ├── intermediate/           # 中间产物
+│   │   ├── design.json
+│   │   ├── routes.json
+│   │   └── ...
 │   ├── backend/                # 后端代码
 │   │   └── ...
 │   ├── frontend/               # 前端代码
 │   │   └── ...
 │   └── devops/                 # 部署配置
 │       └── ...
-├── intermediate/               # 中间产物
-│   ├── design.json
-│   ├── routes.json
+├── versions/                   # 版本链（D2 §4.2）
 │   └── ...
 ├── state/                      # 管线状态
 │   ├── pipeline_state.json
 │   ├── decision_summary.json
+│   ├── version_snapshots/      # 版本快照（D2 §10.2）
 │   └── agent_contexts/         # 各Agent上下文清单
-│       ├── backend_context.json
-│       └── frontend_context.json
+│       ├── backend_context_dv1.json
+│       └── frontend_context_dv1.json
 ├── logs/                       # 日志
 │   ├── pipeline.log
+│   ├── transfer.log            # 传递日志（D3 §8）
 │   └── agent_logs/
 │       ├── backend_agent.log
 │       └── ...
-└── errors/                     # 错误快照
+├── errors/                     # 错误快照
+│   ├── backend_agent_errors.json
+│   ├── error_clusters.json
+│   └── ...
+└── tmp/                        # 临时文件（D3原子写入中间态）
     └── ...
 ```
+
+> 目录结构完整定义见D3 §5.1，D2 §4.2定义版本链存储路径，D4 §8.1定义错误数据目录结构。
 
 ### 4.2 为什么选择文件系统而非内存管道
 
@@ -457,7 +469,8 @@ DevOps Agent → 读取 decision_summary.json，生成配置
     "architecture": {
       "pattern": "ABC三层架构",
       "layers": ["interface", "abstract", "device"],
-      "updated_by": "design_agent"
+      "updated_by": "design_agent",
+      "updated_at": "2026-04-30T00:03:00+08:00"
     },
     "tech_stack": {
       "backend": "Flask + Python",
@@ -467,32 +480,38 @@ DevOps Agent → 读取 decision_summary.json，生成配置
       "websocket": "Flask-SocketIO",
       "auth": "JWT (PyJWT)",
       "frontend": "Vue 3 + Element Plus + Pinia",
-      "updated_by": "design_agent"
+      "updated_by": "design_agent",
+      "updated_at": "2026-04-30T00:03:00+08:00"
     },
     "response_format": {
       "structure": {"code": "int", "data": "any", "message": "str"},
-      "updated_by": "api_agent"
+      "updated_by": "api_agent",
+      "updated_at": "2026-04-30T00:08:00+08:00"
     },
     "exception_handling": {
       "class": "ServiceException",
       "usage": "ServiceException(code, message)",
-      "updated_by": "api_agent"
+      "updated_by": "api_agent",
+      "updated_at": "2026-04-30T00:08:00+08:00"
     },
     "pagination": {
       "parser": "BaseQueryParser",
       "params": {"page": "int", "size": "int"},
       "response": {"items": "list", "total": "int", "page": "int", "size": "int"},
-      "updated_by": "api_agent"
+      "updated_by": "api_agent",
+      "updated_at": "2026-04-30T00:08:00+08:00"
     },
     "audit": {
       "method": "decorator",
       "decorator": "@audit_log(action='xxx')",
-      "updated_by": "design_agent"
+      "updated_by": "design_agent",
+      "updated_at": "2026-04-30T00:03:00+08:00"
     },
     "device_identification": {
       "method": "Flask Config + Factory",
       "function": "get_device_type()",
-      "updated_by": "design_agent"
+      "updated_by": "design_agent",
+      "updated_at": "2026-04-30T00:03:00+08:00"
     },
     "database_conventions": {
       "engine": "InnoDB",
@@ -500,7 +519,8 @@ DevOps Agent → 读取 decision_summary.json，生成配置
       "pk_type": "BIGINT AUTO_INCREMENT",
       "timestamp_columns": "created_at, updated_at",
       "soft_delete": "is_deleted TINYINT DEFAULT 0",
-      "updated_by": "db_agent"
+      "updated_by": "db_agent",
+      "updated_at": "2026-04-30T00:05:00+08:00"
     }
   }
 }
@@ -560,4 +580,5 @@ state/agent_contexts/{agent_name}_context.json
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v1.1 | 2026-04-30 | A+D系列交叉审查修复：intermediate/目录统一到artifacts/下与D3对齐（#X-1）、决策摘要示例添加updated_at字段（#A-3）、error消息添加D4 §9.1前向引用（#X-3） |
 | v1.0 | 2026-04-30 | 初始版本，定义星型拓扑、消息格式、文件系统传递、错误码、上下文传递 |

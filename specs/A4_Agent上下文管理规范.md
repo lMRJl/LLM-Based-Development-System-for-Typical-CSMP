@@ -124,11 +124,13 @@ D3: 仅在JSON状态中记录: {"exists": "LogService", "location": "app/service
 每个Agent在完成一个原子步骤后保存上下文快照，形成版本链：
 
 ```
-backend_context_v1.json  ← 生成 app/__init__.py 后
-backend_context_v2.json  ← 生成 app/models/user.py 后
-backend_context_v3.json  ← 生成 app/services/user.py 后
+backend_context_dv1.json  ← 生成 app/__init__.py 后
+backend_context_dv2.json  ← 生成 app/models/user.py 后
+backend_context_dv3.json  ← 生成 app/services/user.py 后
 ...
 ```
+
+> 版本链命名遵循D2 §4.2定义的`_dv{N}`后缀规则（`{产物名去掉.json}_dv{N}.json`），与D3 §5.1目录结构中的`state/agent_contexts/`路径一致。
 
 ### 4.2 快照内容
 
@@ -177,20 +179,20 @@ backend_context_v3.json  ← 生成 app/services/user.py 后
 
 | 操作 | 说明 |
 |------|------|
-| **追加** | 每步完成后新建v(N+1)，不修改v(N) |
-| **回滚** | 恢复到指定版本v(K)，删除v(K+1)到v(N) |
-| **比较** | diff v(K)和v(K+1)，定位状态变化 |
+| **追加** | 每步完成后新建dv(N+1)，不修改dv(N) |
+| **回滚** | 恢复到指定版本dv(K)，删除dv(K+1)到dv(N) |
+| **比较** | diff dv(K)和dv(K+1)，定位状态变化 |
 | **压缩** | 归档时只保留首版和末版，中间版压缩为diff |
 
 ### 4.4 回滚流程
 
 ```
 1. Orchestrator决定回滚到Agent的某步
-2. 读取目标版本快照 v(K)
-3. 删除 v(K+1) 之后的所有快照文件
-4. 删除 v(K) 之后生成的代码文件（根据completed_files差集）
-5. 用 v(K) 的state重建Agent的上下文清单
-6. 重新调度Agent从v(K)状态继续
+2. 读取目标版本快照 dv(K)
+3. 删除 dv(K+1) 之后的所有快照文件
+4. 删除 dv(K) 之后生成的代码文件（根据completed_files差集）
+5. 用 dv(K) 的state重建Agent的上下文清单
+6. 重新调度Agent从dv(K)状态继续
 ```
 
 ---
@@ -213,8 +215,8 @@ API Agent → 追加接口约定
 S4阶段Backend和Frontend并行执行，各自维护独立决策快照：
 
 ```
-decision_summary_backend_v1.json  ← Backend Agent追加后端特定决策
-decision_summary_frontend_v1.json ← Frontend Agent追加前端特定决策
+decision_summary_backend_dv1.json  ← Backend Agent追加后端特定决策
+decision_summary_frontend_dv1.json ← Frontend Agent追加前端特定决策
 ```
 
 ### 5.3 合并规则
@@ -323,4 +325,5 @@ Step9: 注入LLM，执行生成
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v1.1 | 2026-04-30 | A+D系列交叉审查修复：版本链命名从_v{N}统一为_dv{N}与D2/D3对齐（#A-1） |
 | v1.0 | 2026-04-30 | 初始版本，定义Token三档制、分级衰减、快照版本链、决策摘要合并、生命周期管理 |

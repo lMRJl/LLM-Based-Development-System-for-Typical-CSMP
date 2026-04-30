@@ -143,6 +143,12 @@
         "auth": { "type": "string" },
         "frontend": { "type": "string" }
       }
+    },
+    "_data_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "数据内容版本号，每次修改+1（D2 §2.4）"
     }
   }
 }
@@ -153,6 +159,7 @@
 ```json
 {
   "version": 1,
+  "_data_version": 1,
   "system_overview": {
     "name": "网络安全设备后台管理系统",
     "description": "面向防火墙/IDS/VPN等网络安全设备的统一后台管理平台",
@@ -372,6 +379,12 @@
           }
         }
       }
+    },
+    "_data_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "数据内容版本号，每次修改+1（D2 §2.4）"
     }
   }
 }
@@ -583,6 +596,12 @@
           }
         }
       }
+    },
+    "_data_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "数据内容版本号，每次修改+1（D2 §2.4）"
     }
   }
 }
@@ -657,6 +676,12 @@
           }
         }
       }
+    },
+    "_data_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "数据内容版本号，每次修改+1（D2 §2.4）"
     }
   }
 }
@@ -710,6 +735,31 @@
           }
         },
         "description": "具体决策内容，各领域自定义字段"
+      }
+    },
+    "_data_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "数据内容版本号，每次追加/合并+1（D2 §2.4）"
+    },
+    "_data_version_log": {
+      "type": "array",
+      "description": "版本变更日志（D2 §2.4），决策摘要保留完整版本日志",
+      "items": {
+        "type": "object",
+        "required": ["version", "timestamp", "agent", "change_type"],
+        "properties": {
+          "version": { "type": "integer", "description": "变更后的数据版本号" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "agent": { "type": "string", "description": "发起变更的Agent名" },
+          "change_type": {
+            "type": "string",
+            "enum": ["initial", "append", "modify", "rollback", "merge", "degradation"]
+          },
+          "change_detail": { "type": "string" },
+          "previous_version": { "type": "integer" }
+        }
       }
     }
   }
@@ -855,6 +905,69 @@
         "compensation_applied":  { "type": "array", "items": { "type": "string" } }
       }
     },
+    "artifact_versions": {
+      "type": "object",
+      "description": "各产物当前版本追踪（D2 §12），使Orchestrator无需遍历文件系统即可了解版本状态",
+      "properties": {
+        "design.json":             { "type": ["object", "null"], "properties": { "schema_version": { "type": "integer" }, "data_version": { "type": "integer" } } },
+        "db_model.json":           { "type": ["object", "null"], "properties": { "schema_version": { "type": "integer" }, "data_version": { "type": "integer" } } },
+        "api_def.json":            { "type": ["object", "null"], "properties": { "schema_version": { "type": "integer" }, "data_version": { "type": "integer" } } },
+        "routes.json":             { "type": ["object", "null"], "properties": { "schema_version": { "type": "integer" }, "data_version": { "type": "integer" } } },
+        "decision_summary.json":   { "type": ["object", "null"], "properties": { "schema_version": { "type": "integer" }, "data_version": { "type": "integer" } } },
+        "backend_context.json":    { "type": ["object", "null"], "properties": { "schema_version": { "type": "integer" }, "data_version": { "type": "integer" } } },
+        "frontend_context.json":   { "type": ["object", "null"], "properties": { "schema_version": { "type": "integer" }, "data_version": { "type": "integer" } } },
+        "validation_report.json":  { "type": ["object", "null"], "properties": { "schema_version": { "type": "integer" }, "data_version": { "type": "integer" } } },
+        "error_context.json":      { "type": ["object", "null"], "properties": { "schema_version": { "type": "integer" }, "data_version": { "type": "integer" } } }
+      }
+    },
+    "version_snapshots": {
+      "type": "array",
+      "description": "跨产物版本快照（D2 §10.2），在关键节点保存产物版本一致性快照",
+      "items": {
+        "type": "object",
+        "required": ["snapshot_point", "timestamp", "artifact_versions"],
+        "properties": {
+          "snapshot_point": { "type": "string", "description": "快照点，如S3'_completed、S4_completed、S5_completed" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "artifact_versions": {
+            "type": "object",
+            "description": "快照时刻各产物版本",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "schema_version": { "type": "integer" },
+                "data_version": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "_data_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "数据内容版本号，每次状态变更+1（D2 §2.4）"
+    },
+    "_data_version_log": {
+      "type": "array",
+      "description": "版本变更日志（D2 §2.4），管线状态保留完整版本日志",
+      "items": {
+        "type": "object",
+        "required": ["version", "timestamp", "agent", "change_type"],
+        "properties": {
+          "version": { "type": "integer", "description": "变更后的数据版本号" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "agent": { "type": "string", "description": "发起变更的Agent名" },
+          "change_type": {
+            "type": "string",
+            "enum": ["initial", "append", "modify", "rollback", "merge", "degradation"]
+          },
+          "change_detail": { "type": "string" },
+          "previous_version": { "type": "integer" }
+        }
+      }
+    },
     "created_at": {
       "type": "string",
       "format": "date-time"
@@ -974,6 +1087,12 @@
       "type": ["string", "null"],
       "format": "date-time",
       "description": "冻结时间戳"
+    },
+    "_data_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "数据内容版本号，每次快照+1（D2 §2.4）"
     }
   }
 }
@@ -1043,7 +1162,13 @@
       }
     },
     "lifecycle": { "type": "string", "enum": ["created", "updating", "frozen", "archived"] },
-    "frozen_at":  { "type": ["string", "null"], "format": "date-time" }
+    "frozen_at":  { "type": ["string", "null"], "format": "date-time" },
+    "_data_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "数据内容版本号，每次快照+1（D2 §2.4）"
+    }
   }
 }
 ```
@@ -1129,7 +1254,13 @@
       }
     },
     "lifecycle": { "type": "string", "enum": ["created", "updating", "frozen", "archived"] },
-    "frozen_at":  { "type": ["string", "null"], "format": "date-time" }
+    "frozen_at":  { "type": ["string", "null"], "format": "date-time" },
+    "_data_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "数据内容版本号，每次快照+1（D2 §2.4）"
+    }
   }
 }
 ```
@@ -1292,6 +1423,12 @@
     "requires_manual_intervention": {
       "type": "boolean",
       "default": false
+    },
+    "_data_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "数据内容版本号，每次修改+1（D2 §2.4）"
     }
   }
 }
@@ -1381,10 +1518,18 @@
       "type": "string",
       "enum": ["file", "module", "agent", "pipeline"],
       "description": "错误影响范围（A5第10.3节）"
+    },
+    "_data_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "数据内容版本号（D2 §2.4），error_context为一次性产物通常为1"
     }
   }
 }
 ```
+
+> **D4扩展说明**：本Schema定义error_context.json的基础字段。D4 §3定义了完整的ErrorRecordJSON，在基础字段上扩展了source_layer、business_domain、cluster_id、enrichments、lifecycle、llm_context、input_artifacts等字段。管线实现中，D4的ErrorRecordJSON是错误数据的权威Schema，本节定义的error_context.json作为Orchestrator错误路由的轻量快照格式。
 
 ---
 
@@ -1407,6 +1552,8 @@
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `version` | integer | 是 | Schema版本号 |
+| `_data_version` | integer | 否 | 数据内容版本号（D2 §2.4），默认1 |
+| `_data_version_log` | array | 否 | 版本变更日志（D2 §2.4），仅pipeline_state和decision_summary保留 |
 | `pipeline_id` | string(uuid) | 条件 | 属于哪条管线（状态/上下文类必填，产物类可选） |
 | `timestamp` | string(date-time) | 条件 | 产出时间（上下文/错误类必填） |
 
@@ -1435,4 +1582,5 @@
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v1.1 | 2026-04-30 | A+D系列交叉审查修复：各Schema添加_data_version/_data_version_log字段（#D-1）、pipeline_state添加artifact_versions/version_snapshots字段（#D-2）、error_context添加D4扩展引用说明（#D-3） |
 | v1.0 | 2026-04-30 | 初始版本，定义10个JSON产物的Schema、通用约束、命名规范、版本策略 |
